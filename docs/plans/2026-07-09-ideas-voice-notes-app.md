@@ -12,6 +12,10 @@
 
 ---
 
+## Post-scaffold reality (SDK 57 — supersedes paths below)
+
+The `default` template (Expo SDK 57, RN 0.86, React 19.2) uses a **`src/` layout**: routes live at **`app/src/app/`** (not `app/app/`), with `app/src/components`, `app/src/hooks`, `@/*` → `./src/*`. Wherever this plan writes `app/app/index.tsx`, read `app/src/app/index.tsx`; screen modules, theme, db, etc. all sit under `app/src/`. `react-native-gesture-handler` + `react-native-reanimated` ship pre-installed. `GestureHandlerRootView` already wraps the root layout. The template left an `explore.tsx` tab and a `global.css`/expo-glass-effect web stub — to be replaced/removed as our screens land. Glass uses **expo-blur** (portable), not expo-glass-effect (iOS-26-only).
+
 ## Ground rules for the engineer
 
 - **Windows + Git Bash.** If an interactive Expo/EAS prompt hangs under mintty, prefix with `winpty` (e.g. `winpty eas login`). Escape leading-slash flags with `//` if Git Bash mangles a path.
@@ -194,6 +198,8 @@ CREATE TABLE messages (                  -- chat-with-note history
 Use `randomUUID()` from `expo-crypto` for ids (Hermes has no built-in `crypto.randomUUID`); `Date.now()` for timestamps. In tests, inject a UUID factory so repo functions stay runnable under Node.
 
 **Test:** for each: create → read back → assert. Cover `moveNote`, cascade delete (deleting a note removes its segments+messages), and Inbox = `folder_id IS NULL`. TDD each. **Commit per function group.**
+
+> **Known manual-verify surface (accepted):** `useStore`'s repo-backed actions (`loadFolders`, `createNote`, `moveNote`, etc.) call `getDb()` → expo-sqlite, a native module that can't run under Jest, so they have no automated coverage. Not a data-integrity risk (the repo underneath is fully tested); verified by hand at Gate 1 on the phone. Revisit with a DI'd adapter only if the store grows real logic.
 
 ### Task 2.3: Store (zustand) + hooks
 
