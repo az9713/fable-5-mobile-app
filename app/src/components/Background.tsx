@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
 });
