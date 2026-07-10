@@ -1,21 +1,23 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Stack navigation: custom glass headers are rendered per-screen, so the
+// native header is hidden here. The app opens straight to `index` (home).
+export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <AppTabs />
-      </ThemeProvider>
+      <AnimatedSplashOverlay />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="folder/[id]" />
+        <Stack.Screen name="note/[id]" />
+        <Stack.Screen name="settings" />
+      </Stack>
     </GestureHandlerRootView>
   );
 }

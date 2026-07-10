@@ -63,6 +63,7 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/src/db/__tests__/testAdapter\\.ts$"
-    ]
+    ],
+    "resolver": "react-native-worklets/jest/resolver.js"
   }
 }

@@ -14,6 +14,10 @@ export type StoreState = {
   notes: Note[];
   selectedFolderId: string | null;
   selectedBackgroundId: string;
+  /** Note count per folder id, keyed by folder.id. Populated by loadFolderCounts. */
+  folderCounts: Record<string, number>;
+  /** Note count for the virtual Inbox (folder_id IS NULL). */
+  inboxCount: number;
 
   loadFolders: () => void;
   createFolder: (name: string) => Folder;
@@ -23,6 +27,8 @@ export type StoreState = {
   moveNote: (noteId: string, folderId: string | null) => void;
   deleteNote: (noteId: string) => void;
   setSelectedBackgroundId: (id: string) => void;
+  /** Recomputes folderCounts + inboxCount from the db (home screen grid). */
+  loadFolderCounts: () => void;
 };
 
 const defaultBackgroundId = BACKGROUNDS[0]?.id ?? '';
@@ -32,6 +38,8 @@ export const useStore = create<StoreState>((set, get) => ({
   notes: [],
   selectedFolderId: null,
   selectedBackgroundId: defaultBackgroundId,
+  folderCounts: {},
+  inboxCount: 0,
 
   loadFolders: () => {
     const db = getDb();
@@ -78,5 +86,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setSelectedBackgroundId: (id: string) => {
     set({ selectedBackgroundId: id });
+  },
+
+  loadFolderCounts: () => {
+    const db = getDb();
+    const folders = repo.listFolders(db);
+    const inboxCount = repo.listNotes(db, null).length;
+    const folderCounts: Record<string, number> = {};
+    for (const folder of folders) {
+      folderCounts[folder.id] = repo.listNotes(db, folder.id).length;
+    }
+    set({ folders, folderCounts, inboxCount });
   },
 }));
