@@ -92,6 +92,38 @@ describe('notes', () => {
     expect(updated.updated_at).toBeGreaterThanOrEqual(note.updated_at);
   });
 
+  it('updateNote preserves summary when key is absent or undefined, but allows explicit null to clear it', () => {
+    const { db, deps } = setup();
+    const note = repo.createNote(
+      db,
+      { title: 'Idea', folderId: null, summary: 'orig summary' },
+      deps
+    );
+
+    const afterTitleOnly = repo.updateNote(db, note.id, { title: 'new title' }, deps);
+    expect(afterTitleOnly.summary).toBe('orig summary');
+
+    const afterUndefined = repo.updateNote(db, note.id, { summary: undefined }, deps);
+    expect(afterUndefined.summary).toBe('orig summary');
+
+    const afterNull = repo.updateNote(db, note.id, { summary: null }, deps);
+    expect(afterNull.summary).toBeNull();
+  });
+
+  it('getNote falls back to an empty array when next_steps is corrupted JSON', () => {
+    const { db, deps } = setup();
+    const note = repo.createNote(
+      db,
+      { title: 'Idea', folderId: null, nextSteps: ['a'] },
+      deps
+    );
+
+    db.run('UPDATE notes SET next_steps = ? WHERE id = ?', ['not json{', note.id]);
+
+    expect(() => repo.getNote(db, note.id)).not.toThrow();
+    expect(repo.getNote(db, note.id)?.next_steps).toEqual([]);
+  });
+
   it('next_steps round-trips as a string array', () => {
     const { db, deps } = setup();
     const note = repo.createNote(

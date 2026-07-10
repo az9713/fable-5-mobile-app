@@ -56,10 +56,20 @@ export type Message = {
   created_at: number;
 };
 
+function parseNextSteps(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function toNote(row: NoteRow): Note {
   return {
     ...row,
-    next_steps: row.next_steps ? (JSON.parse(row.next_steps) as string[]) : [],
+    next_steps: parseNextSteps(row.next_steps),
   };
 }
 
@@ -165,10 +175,10 @@ export function updateNote(
 
   const next: Note = {
     ...existing,
-    title: patch.title ?? existing.title,
-    summary: 'summary' in patch ? patch.summary ?? null : existing.summary,
-    next_steps: patch.nextSteps ?? existing.next_steps,
-    audio_uri: 'audioUri' in patch ? patch.audioUri ?? null : existing.audio_uri,
+    title: patch.title !== undefined ? patch.title : existing.title,
+    summary: patch.summary !== undefined ? patch.summary : existing.summary,
+    next_steps: patch.nextSteps !== undefined ? patch.nextSteps : existing.next_steps,
+    audio_uri: patch.audioUri !== undefined ? patch.audioUri : existing.audio_uri,
     updated_at: deps.now(),
   };
 
