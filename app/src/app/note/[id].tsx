@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -140,50 +140,56 @@ export default function NoteScreen() {
           <Text style={styles.back}>‹ Back</Text>
         </Pressable>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>{currentNote.title || 'Untitled'}</Text>
-          <Text style={styles.date}>{formatDate(currentNote.created_at)}</Text>
-        </View>
-
-        <GlassCard radius={theme.radius.lg} style={styles.card}>
-          <View style={styles.cardContent}>
-            {!!currentNote.summary && <Text style={styles.summary}>{currentNote.summary}</Text>}
-            {!currentNote.summary && (
-              <Text style={styles.summaryPending}>Analysis will appear here shortly.</Text>
-            )}
-            {hasNextSteps && (
-              <View style={styles.nextSteps}>
-                <Text style={styles.sectionLabel}>Next steps</Text>
-                {currentNote.next_steps.map((step, i) => (
-                  <View key={i} style={styles.stepRow}>
-                    <Text style={styles.stepBullet}>{'•'}</Text>
-                    <Text style={styles.stepText}>{step}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </GlassCard>
-
-        <TranscriptCard
-          segments={currentSegments}
-          expanded={expanded}
-          onToggle={() => setExpanded((e) => !e)}
-        />
-
-        <Pressable
-          onPress={() => setChatVisible(true)}
-          style={styles.chatButtonWrap}
-          accessibilityRole="button"
-          accessibilityLabel="Chat with this note"
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <GlassCard radius={theme.radius.md} style={styles.chatButton}>
-            <View style={styles.chatButtonContent}>
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.color.textPrimary} />
-              <Text style={styles.chatButtonText}>Chat with this note</Text>
+          <View style={styles.header}>
+            <Text style={styles.title}>{currentNote.title || 'Untitled'}</Text>
+            <Text style={styles.date}>{formatDate(currentNote.created_at)}</Text>
+          </View>
+
+          <GlassCard radius={theme.radius.lg} style={styles.card}>
+            <View style={styles.cardContent}>
+              {!!currentNote.summary && <Text style={styles.summary}>{currentNote.summary}</Text>}
+              {!currentNote.summary && (
+                <Text style={styles.summaryPending}>Analysis will appear here shortly.</Text>
+              )}
+              {hasNextSteps && (
+                <View style={styles.nextSteps}>
+                  <Text style={styles.sectionLabel}>Next steps</Text>
+                  {currentNote.next_steps.map((step, i) => (
+                    <View key={i} style={styles.stepRow}>
+                      <Text style={styles.stepBullet}>{'•'}</Text>
+                      <Text style={styles.stepText}>{step}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           </GlassCard>
-        </Pressable>
+
+          <TranscriptCard
+            segments={currentSegments}
+            expanded={expanded}
+            onToggle={() => setExpanded((e) => !e)}
+          />
+
+          <Pressable
+            onPress={() => setChatVisible(true)}
+            style={styles.chatButtonWrap}
+            accessibilityRole="button"
+            accessibilityLabel="Chat with this note"
+          >
+            <GlassCard radius={theme.radius.md} style={styles.chatButton}>
+              <View style={styles.chatButtonContent}>
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.color.textPrimary} />
+                <Text style={styles.chatButtonText}>Chat with this note</Text>
+              </View>
+            </GlassCard>
+          </Pressable>
+        </ScrollView>
 
         <View style={styles.recordSection}>
           <RecordButton size={84} state={buttonState} onToggle={handleRecordToggle} />
@@ -310,6 +316,13 @@ const styles = StyleSheet.create({
   back: {
     fontSize: theme.font.body,
     color: theme.color.textSecondary,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    gap: theme.space.lg,
+    paddingBottom: theme.space.lg,
   },
   header: {
     gap: theme.space.xs,
