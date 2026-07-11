@@ -6,3 +6,8 @@ node_modules/
 **/.expo/
 **/dist/
 **/.DS_Store
+
+# personal screenshots
+*.PNG
+*.png
+!app/assets/**/*.png
