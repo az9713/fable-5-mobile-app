@@ -7,7 +7,9 @@ A single-user glassmorphism voice-notes app: tap record, talk, and it transcribe
 Record → **Whisper** transcription → **Claude Haiku** auto-title + summary + next-steps → filed in Inbox → move into glass folders → expand/append/chat with any note.
 
 <p align="center">
-  <img src="docs/media/home.png" alt="Ideas home screen — liquid-glass folders and a record button over a Seurat painting" width="300">
+  <img src="IMG_2058.PNG" alt="Ideas app screenshot 1" width="250">
+  <img src="IMG_2062.PNG" alt="Ideas app screenshot 2" width="250">
+  <img src="IMG_2063.PNG" alt="Ideas app screenshot 3" width="250">
 </p>
 
 ## Stack
