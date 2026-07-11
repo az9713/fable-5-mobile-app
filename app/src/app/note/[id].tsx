@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -149,7 +149,10 @@ export default function NoteScreen() {
             <View style={styles.cardContent}>
               {!!currentNote.summary && <Text style={styles.summary}>{currentNote.summary}</Text>}
               {!currentNote.summary && (
-                <Text style={styles.summaryPending}>Analysis will appear here shortly.</Text>
+                <View style={styles.analyzingRow}>
+                  <ActivityIndicator size="small" color={theme.color.textFaint} />
+                  <Text style={styles.summaryPending}>Analyzing…</Text>
+                </View>
               )}
               {hasNextSteps && (
                 <View style={styles.nextSteps}>
@@ -309,6 +312,11 @@ const styles = StyleSheet.create({
     fontSize: theme.font.body,
     color: theme.color.textPrimary,
     lineHeight: 22,
+  },
+  analyzingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.sm,
   },
   summaryPending: {
     fontSize: theme.font.body,

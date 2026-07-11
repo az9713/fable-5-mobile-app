@@ -3,6 +3,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Background } from '@/components/Background';
 import { GlassCard } from '@/components/GlassCard';
@@ -83,6 +84,12 @@ export default function FolderScreen() {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.empty}>
+              <Ionicons
+                name="file-tray-outline"
+                size={32}
+                color={theme.color.textFaint}
+                style={styles.emptyIcon}
+              />
               <Text style={styles.emptyText}>No notes yet</Text>
             </View>
           }
@@ -155,6 +162,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: theme.space.xxxl,
+  },
+  emptyIcon: {
+    marginBottom: theme.space.sm,
   },
   emptyText: {
     fontSize: theme.font.body,

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Directory, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import Constants from 'expo-constants';
 
 import { AURORA_COLORS, Background } from '@/components/Background';
 import { GlassCard } from '@/components/GlassCard';
@@ -20,6 +21,11 @@ import { BACKGROUNDS } from '@/theme/backgrounds';
 import { theme } from '@/theme/theme';
 
 type TestStatus = 'idle' | 'testing' | 'ok' | 'fail';
+
+// Read at module scope (not per-render) — this never changes for the life of
+// the app process. Falls back to the app.json value if expoConfig isn't
+// populated (e.g. under Jest, where there's no native Constants module).
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 /** Pings the OpenAI API with the given key. 200 = key works. Never throws. */
 async function testOpenAiKey(key: string): Promise<boolean> {
@@ -271,6 +277,8 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
           </GlassCard>
+
+          <Text style={styles.versionFooter}>Ideas v{APP_VERSION}</Text>
         </ScrollView>
       </SafeAreaView>
     </Background>
@@ -476,5 +484,11 @@ const styles = StyleSheet.create({
   exportButtonText: {
     fontSize: theme.font.body,
     color: theme.color.textPrimary,
+  },
+  versionFooter: {
+    textAlign: 'center',
+    fontSize: theme.font.small,
+    color: theme.color.textFaint,
+    marginTop: theme.space.sm,
   },
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -111,16 +112,20 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle, state }: RecordBut
             borderColor={theme.glass.borderStrong}
             style={{ width: size, height: size }}
           >
-            <View
+            <LinearGradient
               pointerEvents="none"
+              colors={['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0)']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0.25, y: 0.15 }}
+              end={{ x: 1, y: 1 }}
               style={[
                 styles.specular,
                 {
-                  width: size * 0.42,
-                  height: size * 0.42,
-                  borderRadius: size * 0.42,
-                  top: size * 0.08,
-                  left: size * 0.1,
+                  width: size * 0.62,
+                  height: size * 0.62,
+                  borderRadius: size * 0.62,
+                  top: -size * 0.04,
+                  left: -size * 0.03,
                 },
               ]}
             />
@@ -153,9 +158,11 @@ const styles = StyleSheet.create({
   },
   specular: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    // Squash into a soft, elliptical reflection rather than a hard pill.
-    transform: [{ scaleY: 0.7 }],
+    // A large, soft-edged gradient sheen (fading fully to transparent by its
+    // own boundary) rather than a flat-color circle with a hard edge — reads
+    // as ambient light on glass instead of a pasted-on highlight. Squashed
+    // into a gentle ellipse to match the light hitting a curved surface.
+    transform: [{ scaleY: 0.75 }],
   },
   dot: {
     width: 28,
