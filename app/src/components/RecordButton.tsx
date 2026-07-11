@@ -95,11 +95,11 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
               style={[
                 styles.specular,
                 {
-                  width: size * 0.55,
-                  height: size * 0.32,
-                  borderRadius: (size * 0.32) / 2,
-                  top: size * 0.12,
-                  left: size * 0.14,
+                  width: size * 0.42,
+                  height: size * 0.42,
+                  borderRadius: size * 0.42,
+                  top: size * 0.08,
+                  left: size * 0.1,
                 },
               ]}
             />
@@ -128,7 +128,9 @@ const styles = StyleSheet.create({
   },
   specular: {
     position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    // Squash into a soft, elliptical reflection rather than a hard pill.
+    transform: [{ scaleY: 0.7 }],
   },
   dot: {
     width: 28,
