@@ -46,6 +46,13 @@ export type StoreState = {
    */
   analyzeNote: (noteId: string, transcript: string) => Promise<void>;
   moveNote: (noteId: string, folderId: string | null) => void;
+  /**
+   * Folder-screen "Move to…" action: moves a note into `folderId` (null =
+   * Inbox), then refreshes both the source and destination folder counts
+   * (via loadFolderCounts) and reloads the currently-open note list (via
+   * loadNotes) so the note disappears from view if it moved elsewhere.
+   */
+  moveNoteToFolder: (noteId: string, folderId: string | null) => void;
   deleteNote: (noteId: string) => void;
   setSelectedBackgroundId: (id: string) => void;
   /** Recomputes folderCounts + inboxCount from the db (home screen grid). */
@@ -139,6 +146,13 @@ export const useStore = create<StoreState>((set, get) => ({
     const db = getDb();
     repo.moveNote(db, noteId, folderId);
     get().loadNotes();
+  },
+
+  moveNoteToFolder: (noteId: string, folderId: string | null) => {
+    const db = getDb();
+    repo.moveNote(db, noteId, folderId);
+    get().loadNotes();
+    get().loadFolderCounts();
   },
 
   deleteNote: (noteId: string) => {

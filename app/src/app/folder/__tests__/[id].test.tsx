@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import type { Note } from '@/db/repo';
 
@@ -11,7 +11,9 @@ const mockFixedState: {
   notes: Note[];
   noteSnippets: Record<string, string>;
   selectedBackgroundId: string;
+  loadFolders: jest.Mock;
   loadNotes: jest.Mock;
+  moveNoteToFolder: jest.Mock;
 } = {
   folders: [{ id: 'f1', name: 'Work', created_at: 0 }],
   notes: [
@@ -28,7 +30,9 @@ const mockFixedState: {
   ],
   noteSnippets: { n1: 'This is the first thing I said.' },
   selectedBackgroundId: 'aurora',
+  loadFolders: jest.fn(),
   loadNotes: jest.fn(),
+  moveNoteToFolder: jest.fn(),
 };
 
 jest.mock('@/store/useStore', () => ({
@@ -47,6 +51,10 @@ jest.mock('expo-router', () => {
 import FolderScreen from '@/app/folder/[id]';
 
 describe('FolderScreen (Inbox)', () => {
+  beforeEach(() => {
+    mockFixedState.moveNoteToFolder.mockClear();
+  });
+
   it('renders the Inbox header and its notes', async () => {
     const { getByText } = await render(<FolderScreen />);
 
@@ -61,5 +69,46 @@ describe('FolderScreen (Inbox)', () => {
 
     const { getByText } = await render(<FolderScreen />);
     expect(getByText('No notes yet')).toBeTruthy();
+
+    // Restore for the tests below.
+    mockFixedState.notes = [
+      {
+        id: 'n1',
+        folder_id: null,
+        title: 'A great idea about ships',
+        summary: null,
+        next_steps: [],
+        audio_uri: 'file:///audio/n1.m4a',
+        created_at: 0,
+        updated_at: 0,
+      },
+    ];
+    mockFixedState.noteSnippets = { n1: 'This is the first thing I said.' };
+  });
+
+  it('long-pressing a note opens the "Move to…" sheet listing other folders', async () => {
+    // Fire the longPress on the note's title Text node rather than the
+    // outer accessibilityLabel host view: RNTL's fireEvent walks up the
+    // fiber tree to find the Pressable's onLongPress either way, but firing
+    // directly on the Pressable's own host node (inside a FlatList cell)
+    // gets gated by its touch-responder check and silently no-ops.
+    const { getByText, queryByText } = await render(<FolderScreen />);
+
+    expect(queryByText('Move to…')).toBeNull();
+
+    await fireEvent(getByText('A great idea about ships'), 'longPress');
+
+    expect(getByText('Move to…')).toBeTruthy();
+    expect(getByText('Work')).toBeTruthy();
+  });
+
+  it('tapping a destination calls moveNoteToFolder and closes the sheet', async () => {
+    const { getByText, queryByText } = await render(<FolderScreen />);
+
+    await fireEvent(getByText('A great idea about ships'), 'longPress');
+    await fireEvent.press(getByText('Work'));
+
+    expect(mockFixedState.moveNoteToFolder).toHaveBeenCalledWith('n1', 'f1');
+    expect(queryByText('Move to…')).toBeNull();
   });
 });
