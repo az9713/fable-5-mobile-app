@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
@@ -13,18 +13,30 @@ import Animated, {
 import { GlassCard } from '@/components/GlassCard';
 import { theme } from '@/theme/theme';
 
+export type RecordButtonState = 'idle' | 'recording' | 'processing';
+
 export type RecordButtonProps = {
   /** Diameter of the button, in px. */
   size?: number;
   /** Called after the local recording state toggles, with the new state. */
   onToggle?: (recording: boolean) => void;
+  /**
+   * Controlled recording state (from a real recorder, e.g. `useRecorder`).
+   * When provided, the throb/dot/spinner reflect this instead of internal
+   * press state, and RecordButton skips its own haptics (the controller is
+   * expected to fire them) to avoid a double buzz.
+   */
+  state?: RecordButtonState;
 };
 
 const DEFAULT_SIZE = 120;
 
-export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProps) {
-  // Phase 4 will replace the local toggle with real expo-audio recording.
-  const [recording, setRecording] = useState(false);
+export function RecordButton({ size = DEFAULT_SIZE, onToggle, state }: RecordButtonProps) {
+  const controlled = state !== undefined;
+  const [internalRecording, setInternalRecording] = useState(false);
+
+  const recording = controlled ? state === 'recording' : internalRecording;
+  const processing = controlled && state === 'processing';
 
   const scale = useSharedValue(1);
   const glow = useSharedValue(0);
@@ -40,9 +52,9 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
     } else {
       cancelAnimation(scale);
       scale.value = withTiming(1, { duration: 250 });
-      glow.value = withTiming(0, { duration: 250 });
+      glow.value = withTiming(processing ? 0.5 : 0, { duration: 250 });
     }
-  }, [recording, scale, glow]);
+  }, [recording, processing, scale, glow]);
 
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -54,15 +66,23 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
   }));
 
   const handlePress = () => {
+    if (processing) return;
     const next = !recording;
-    Haptics.impactAsync(
-      next ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy
-    );
-    setRecording(next);
+    if (!controlled) {
+      Haptics.impactAsync(
+        next ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Heavy
+      );
+      setInternalRecording(next);
+    }
     onToggle?.(next);
   };
 
   const haloSize = size * 1.5;
+  const accessibilityLabel = processing
+    ? 'Processing recording'
+    : recording
+      ? 'Stop recording'
+      : 'Start recording';
 
   return (
     <View style={styles.container}>
@@ -82,8 +102,9 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
         <Pressable
           onPress={handlePress}
           hitSlop={12}
+          disabled={processing}
           accessibilityRole="button"
-          accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
+          accessibilityLabel={accessibilityLabel}
         >
           <GlassCard
             radius={theme.radius.pill}
@@ -104,7 +125,11 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
               ]}
             />
             <View style={[styles.center, { width: size, height: size }]}>
-              <View style={[styles.dot, recording && styles.dotRecording]} />
+              {processing ? (
+                <ActivityIndicator color={theme.color.textPrimary} />
+              ) : (
+                <View style={[styles.dot, recording && styles.dotRecording]} />
+              )}
             </View>
           </GlassCard>
         </Pressable>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -11,15 +12,19 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
+import { formatParagraphs, transcribe } from '@/ai/whisper';
+import { useRecorder } from '@/audio/useRecorder';
 import { Background } from '@/components/Background';
 import { FolderTile } from '@/components/FolderTile';
 import { GlassCard } from '@/components/GlassCard';
 import { RecordButton } from '@/components/RecordButton';
+import { getKey } from '@/store/secrets';
 import { useStore } from '@/store/useStore';
 import { theme } from '@/theme/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const recorder = useRecorder();
 
   const folders = useStore((s) => s.folders);
   const folderCounts = useStore((s) => s.folderCounts);
@@ -28,9 +33,15 @@ export default function HomeScreen() {
   const loadFolders = useStore((s) => s.loadFolders);
   const loadFolderCounts = useStore((s) => s.loadFolderCounts);
   const createFolder = useStore((s) => s.createFolder);
+  const captureNote = useStore((s) => s.captureNote);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  // useRecorder's own 'processing' phase only covers moving the file to
+  // documentDirectory (fast); this covers the full stop -> transcribe ->
+  // save flow so the button shows "processing" for its whole duration.
+  const [processing, setProcessing] = useState(false);
+  const buttonState = recorder.state === 'recording' ? 'recording' : processing ? 'processing' : 'idle';
 
   useEffect(() => {
     loadFolders();
@@ -53,13 +64,56 @@ export default function HomeScreen() {
     setNewFolderName('');
   };
 
+  const handleRecordToggle = async (recording: boolean) => {
+    if (recording) {
+      await recorder.start();
+      if (recorder.permissionDenied) {
+        Alert.alert(
+          'Microphone access needed',
+          'Enable microphone access for Ideas in Settings to record.'
+        );
+      }
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const audioUri = await recorder.stop();
+      if (!audioUri) return;
+
+      const key = await getKey('openai');
+      if (!key) {
+        Alert.alert('Add your OpenAI key', 'Add your OpenAI key in Settings to transcribe notes.');
+        // The recording itself is already safely saved on disk — nothing to
+        // discard, we just can't transcribe it yet.
+        return;
+      }
+
+      try {
+        const raw = await transcribe(audioUri, key);
+        captureNote(formatParagraphs(raw), audioUri);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {
+        // Never lose the recording: save it with a placeholder transcript so
+        // the user can retry later, and let them know something went wrong.
+        captureNote('[Transcription failed — audio saved]', audioUri);
+        Alert.alert(
+          'Transcription failed',
+          'We saved your recording. You can find it in Inbox and try again later.'
+        );
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <Background backgroundId={selectedBackgroundId}>
       <SafeAreaView style={styles.safe}>
         <Text style={styles.appTitle}>Ideas</Text>
 
         <View style={styles.recordSection}>
-          <RecordButton />
+          <RecordButton state={buttonState} onToggle={handleRecordToggle} />
         </View>
 
         <View style={styles.grid}>

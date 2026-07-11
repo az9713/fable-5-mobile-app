@@ -12,6 +12,8 @@ export type StoreState = {
   folders: Folder[];
   /** Notes currently loaded for the selected folder (null = Inbox). */
   notes: Note[];
+  /** First segment's transcript text per note.id, for the folder list preview. */
+  noteSnippets: Record<string, string>;
   selectedFolderId: string | null;
   selectedBackgroundId: string;
   /** Note count per folder id, keyed by folder.id. Populated by loadFolderCounts. */
@@ -24,6 +26,13 @@ export type StoreState = {
   selectFolder: (folderId: string | null) => void;
   loadNotes: (folderId?: string | null) => void;
   createNote: (input: { title: string; folderId?: string | null }) => Note;
+  /**
+   * Records a captured voice note into the Inbox: creates the note (title =
+   * first ~6 words of the transcript, else "New idea") with its audio uri,
+   * adds the transcript as the note's first segment, then refreshes the
+   * Inbox note list (if currently selected) and folder counts.
+   */
+  captureNote: (transcript: string, audioUri: string | null) => Note;
   moveNote: (noteId: string, folderId: string | null) => void;
   deleteNote: (noteId: string) => void;
   setSelectedBackgroundId: (id: string) => void;
@@ -36,6 +45,7 @@ const defaultBackgroundId = BACKGROUNDS[0]?.id ?? '';
 export const useStore = create<StoreState>((set, get) => ({
   folders: [],
   notes: [],
+  noteSnippets: {},
   selectedFolderId: null,
   selectedBackgroundId: defaultBackgroundId,
   folderCounts: {},
@@ -61,7 +71,13 @@ export const useStore = create<StoreState>((set, get) => ({
   loadNotes: (folderId?: string | null) => {
     const db = getDb();
     const id = folderId === undefined ? get().selectedFolderId : folderId;
-    set({ notes: repo.listNotes(db, id) });
+    const notes = repo.listNotes(db, id);
+    const noteSnippets: Record<string, string> = {};
+    for (const note of notes) {
+      const [firstSegment] = repo.listSegments(db, note.id);
+      if (firstSegment) noteSnippets[note.id] = firstSegment.text;
+    }
+    set({ notes, noteSnippets });
   },
 
   createNote: (input: { title: string; folderId?: string | null }) => {
@@ -69,6 +85,21 @@ export const useStore = create<StoreState>((set, get) => ({
     const folderId = input.folderId ?? get().selectedFolderId;
     const note = repo.createNote(db, { title: input.title, folderId });
     get().loadNotes();
+    return note;
+  },
+
+  captureNote: (transcript: string, audioUri: string | null) => {
+    const db = getDb();
+    const words = transcript.trim().split(/\s+/).filter(Boolean);
+    const title = words.length > 0 ? words.slice(0, 6).join(' ') : 'New idea';
+
+    const note = repo.createNote(db, { title, folderId: null, audioUri });
+    repo.addSegment(db, note.id, { text: transcript, audioUri });
+
+    if (get().selectedFolderId === null) {
+      get().loadNotes(null);
+    }
+    get().loadFolderCounts();
     return note;
   },
 

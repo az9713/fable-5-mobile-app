@@ -13,6 +13,7 @@ const mockFixedState = {
   loadFolders: jest.fn(),
   loadFolderCounts: jest.fn(),
   createFolder: jest.fn(),
+  captureNote: jest.fn(),
 };
 
 jest.mock('@/store/useStore', () => ({
@@ -21,6 +22,17 @@ jest.mock('@/store/useStore', () => ({
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+}));
+
+// useRecorder wraps expo-audio, a native module that can't load under Jest
+// (same reason src/db/db.ts is never imported by tests) — stub it out.
+jest.mock('@/audio/useRecorder', () => ({
+  useRecorder: () => ({
+    state: 'idle',
+    permissionDenied: false,
+    start: jest.fn(),
+    stop: jest.fn(),
+  }),
 }));
 
 import HomeScreen from '@/app/index';
