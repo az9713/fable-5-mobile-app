@@ -2,6 +2,8 @@
 
 A single-user glassmorphism voice-notes app: tap record, talk, and it transcribes, titles, and summarizes your idea with AI. Built with Expo (React Native), local-only, no accounts.
 
+> **Inspiration:** this project was built following the YouTube video ["Fable 5 Is BACK. And It Just Built This Mobile App"](https://www.youtube.com/watch?v=2PH9f6yM8KI&t=27s) — designing and shipping a mobile app from a design-first PRD with Claude Fable 5 as the orchestrator.
+
 Record → **Whisper** transcription → **Claude Haiku** auto-title + summary + next-steps → filed in Inbox → move into glass folders → expand/append/chat with any note.
 
 ## Stack

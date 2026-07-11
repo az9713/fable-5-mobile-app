@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.simon.ideas",
+      "bundleIdentifier": "com.ideas.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Record your voice notes."
       }

@@ -32,7 +32,7 @@ The `default` template (Expo SDK 57, RN 0.86, React 19.2) uses a **`src/` layout
 Confirm you have, before writing code:
 - [x] OpenAI API key (Whisper) — verified working (env + `./.env`)
 - [x] Anthropic API key — verified working, Haiku (`./.env`; **$2 credit → Haiku for ALL AI calls, analysis and chat**)
-- [x] Expo account — logged in as `az9713`
+- [x] Expo account — logged in
 - [x] ~~Apple Developer Program~~ — **not used**; $0 Expo Go + EAS Update path (see Phase 11)
 - [x] **Expo Go** installed on the iPhone
 - [x] Node v22 + eas-cli 19.1 in Git Bash
@@ -42,7 +42,7 @@ Keys are entered in the app later (Settings), so nothing to store yet.
 ### Task 0.2: Scaffold the project
 
 ```bash
-cd /c/Users/simon/Downloads/fable_5_mobile_app_pat_simmons
+cd <project-root>
 npx create-expo-app@latest app --template default   # TypeScript + expo-router
 cd app
 git init && git add -A && git commit -m "chore: scaffold expo app"
@@ -396,7 +396,7 @@ eas update --branch production --message "v1"
 Run this **without** any `EXPO_PUBLIC_*` key vars in the environment / `.env` (see Task 2.4) — the published bundle must rely on Keychain-entered keys only.
 
 ### Task 11.3: Open on the iPhone
-1. Open **Expo Go**, sign in as `az9713` (same account the CLI is logged into).
+1. Open **Expo Go**, sign in (same account the CLI is logged into).
 2. The project appears under **Projects** → tap it → the published update loads.
 3. Enter both API keys in Settings, grant mic permission, record a real note, confirm transcript + analysis land. The last-loaded update is cached, so the app opens and works without the PC running.
 
