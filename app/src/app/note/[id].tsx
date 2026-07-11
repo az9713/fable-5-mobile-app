@@ -192,6 +192,13 @@ export default function NoteScreen() {
         </View>
       </SafeAreaView>
 
+      {/* Sibling to (and rendered after) the SafeAreaView, both inside
+          Background: ChatDrawer is now a plain in-tree absolutely-positioned
+          overlay rather than a native Modal, so paint order matters — being
+          the LAST child here means it layers above the ScrollView content
+          AND the fixed record-button footer, and its absoluteFill sizes to
+          Background's full-bleed view rather than being clipped by
+          SafeAreaView's inset padding. */}
       <ChatDrawer
         visible={chatVisible}
         onClose={() => setChatVisible(false)}

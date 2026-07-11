@@ -23,6 +23,15 @@ describe('ChatDrawer', () => {
     mockFixedState.sendChatMessage.mockClear();
   });
 
+  it('renders nothing when not visible', async () => {
+    const { queryByText, toJSON } = await render(
+      <ChatDrawer visible={false} noteId="n1" transcript="transcript text" onClose={jest.fn()} />
+    );
+
+    expect(toJSON()).toBeNull();
+    expect(queryByText('Chat with this note')).toBeNull();
+  });
+
   it('renders the header, empty state, and suggested prompt chips when visible', async () => {
     const { getByText } = await render(
       <ChatDrawer visible noteId="n1" transcript="transcript text" onClose={jest.fn()} />
