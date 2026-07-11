@@ -4,7 +4,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 import * as SecureStore from 'expo-secure-store';
-import { getKey, setKey } from '@/store/secrets';
+import { getKey, setKey, getSetting, setSetting } from '@/store/secrets';
 
 const getItemAsync = SecureStore.getItemAsync as jest.Mock;
 const setItemAsync = SecureStore.setItemAsync as jest.Mock;
@@ -72,5 +72,30 @@ describe('secrets', () => {
     await setKey('openai', 'new-key');
 
     expect(setItemAsync).toHaveBeenCalledWith('openai_api_key', 'new-key');
+  });
+
+  describe('settings', () => {
+    it('setSetting writes to SecureStore under a settings-specific key', async () => {
+      await setSetting('selectedBackgroundId', 'monet');
+
+      expect(setItemAsync).toHaveBeenCalledWith('setting_selected_background_id', 'monet');
+    });
+
+    it('getSetting reads the persisted value back', async () => {
+      getItemAsync.mockResolvedValueOnce('vangogh');
+
+      const value = await getSetting('selectedBackgroundId');
+
+      expect(getItemAsync).toHaveBeenCalledWith('setting_selected_background_id');
+      expect(value).toBe('vangogh');
+    });
+
+    it('getSetting returns null when nothing has been persisted yet', async () => {
+      getItemAsync.mockResolvedValueOnce(null);
+
+      const value = await getSetting('selectedBackgroundId');
+
+      expect(value).toBeNull();
+    });
   });
 });

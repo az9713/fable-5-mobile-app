@@ -9,7 +9,9 @@ export type BackgroundProps = {
   children?: React.ReactNode;
 };
 
-const AURORA_COLORS = ['#2E1A47', '#3A6FB0', '#3FA9A0', '#F2B679'] as const;
+// Exported so Settings' background picker can render a matching gradient
+// swatch for the "aurora" (no-image) entry without duplicating the palette.
+export const AURORA_COLORS = ['#2E1A47', '#3A6FB0', '#3FA9A0', '#F2B679'] as const;
 
 // Vertical scrim: near-transparent at top (keeps the art vivid) to a legible
 // dark base at the bottom (keeps text readable), instead of a flat wash.

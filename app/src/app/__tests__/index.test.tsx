@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 
 // Rendering the real store would call getDb() (expo-sqlite, native-only —
 // crashes under Jest), so give the home screen a fixed, in-memory state.
@@ -20,8 +20,9 @@ jest.mock('@/store/useStore', () => ({
   useStore: (selector: (state: typeof mockFixedState) => unknown) => selector(mockFixedState),
 }));
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
 // useRecorder wraps expo-audio, a native module that can't load under Jest
@@ -46,5 +47,13 @@ describe('HomeScreen', () => {
     expect(getByText('5')).toBeTruthy();
     expect(getByText('Work')).toBeTruthy();
     expect(getByText('New folder')).toBeTruthy();
+  });
+
+  it('navigates to /settings when the gear icon is pressed', async () => {
+    const { getByLabelText } = await render(<HomeScreen />);
+
+    fireEvent.press(getByLabelText('Settings'));
+
+    expect(mockPush).toHaveBeenCalledWith('/settings');
   });
 });

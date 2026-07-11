@@ -2,7 +2,7 @@ import { useStore } from '@/store/useStore';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 import * as repo from '@/db/repo';
 import { analyze, chat } from '@/ai/anthropic';
-import { getKey } from '@/store/secrets';
+import { getKey, getSetting, setSetting } from '@/store/secrets';
 
 // getDb() opens a native expo-sqlite database and can't run under Jest, so
 // stub it out along with the repo functions touched by moveNoteToFolder —
@@ -31,6 +31,8 @@ jest.mock('@/ai/anthropic', () => ({
 
 jest.mock('@/store/secrets', () => ({
   getKey: jest.fn(),
+  getSetting: jest.fn(() => Promise.resolve(null)),
+  setSetting: jest.fn(() => Promise.resolve()),
 }));
 
 describe('useStore', () => {
@@ -46,6 +48,36 @@ describe('useStore', () => {
   it('setSelectedBackgroundId updates state', () => {
     useStore.getState().setSelectedBackgroundId('monet');
     expect(useStore.getState().selectedBackgroundId).toBe('monet');
+  });
+
+  describe('background persistence', () => {
+    beforeEach(() => {
+      (setSetting as jest.Mock).mockClear();
+      (getSetting as jest.Mock).mockReset().mockResolvedValue(null);
+    });
+
+    it('setSelectedBackgroundId persists the choice so it survives a restart', () => {
+      useStore.getState().setSelectedBackgroundId('vangogh');
+      expect(setSetting).toHaveBeenCalledWith('selectedBackgroundId', 'vangogh');
+    });
+
+    it('loadSelectedBackground applies a previously-persisted id', async () => {
+      (getSetting as jest.Mock).mockResolvedValue('seurat');
+
+      await useStore.getState().loadSelectedBackground();
+
+      expect(getSetting).toHaveBeenCalledWith('selectedBackgroundId');
+      expect(useStore.getState().selectedBackgroundId).toBe('seurat');
+    });
+
+    it('loadSelectedBackground leaves the current background when nothing is persisted', async () => {
+      useStore.getState().setSelectedBackgroundId('monet');
+      (getSetting as jest.Mock).mockResolvedValue(null);
+
+      await useStore.getState().loadSelectedBackground();
+
+      expect(useStore.getState().selectedBackgroundId).toBe('monet');
+    });
   });
 
   describe('moveNoteToFolder', () => {

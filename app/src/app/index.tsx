@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 import { formatParagraphs, transcribe } from '@/ai/whisper';
 import { useRecorder } from '@/audio/useRecorder';
@@ -49,6 +50,11 @@ export default function HomeScreen() {
     loadFolderCounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openSettings = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/settings');
+  };
 
   const openNewFolderModal = () => {
     setNewFolderName('');
@@ -116,7 +122,19 @@ export default function HomeScreen() {
   return (
     <Background backgroundId={selectedBackgroundId}>
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.appTitle}>Ideas</Text>
+        <View style={styles.header}>
+          <View style={styles.headerSpacer} />
+          <Text style={styles.appTitle}>Ideas</Text>
+          <Pressable
+            onPress={openSettings}
+            hitSlop={12}
+            style={styles.settingsButton}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Ionicons name="settings-outline" size={22} color={theme.color.textSecondary} />
+          </Pressable>
+        </View>
 
         <View style={styles.recordSection}>
           <RecordButton state={buttonState} onToggle={handleRecordToggle} />
@@ -193,9 +211,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.space.xl,
   },
-  appTitle: {
-    textAlign: 'center',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: theme.space.md,
+  },
+  headerSpacer: {
+    width: 22,
+  },
+  settingsButton: {
+    width: 22,
+    alignItems: 'flex-end',
+  },
+  appTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: theme.font.body,
     color: theme.color.textSecondary,
     letterSpacing: 1,

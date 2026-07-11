@@ -29,3 +29,23 @@ export async function getKey(name: SecretName): Promise<string | null> {
 export async function setKey(name: SecretName, value: string): Promise<void> {
   await SecureStore.setItemAsync(KEYCHAIN_KEYS[name], value);
 }
+
+/**
+ * Small non-secret settings persisted the same way as keys (SecureStore is
+ * just a convenient always-available durable store on-device — nothing here
+ * is actually sensitive). Currently only the chosen background, so it
+ * survives an app restart.
+ */
+export type SettingName = 'selectedBackgroundId';
+
+const SETTING_KEYS: Record<SettingName, string> = {
+  selectedBackgroundId: 'setting_selected_background_id',
+};
+
+export async function getSetting(name: SettingName): Promise<string | null> {
+  return SecureStore.getItemAsync(SETTING_KEYS[name]);
+}
+
+export async function setSetting(name: SettingName, value: string): Promise<void> {
+  await SecureStore.setItemAsync(SETTING_KEYS[name], value);
+}

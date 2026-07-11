@@ -3,7 +3,7 @@ import { analyze, chat } from '@/ai/anthropic';
 import { getDb } from '@/db/db';
 import * as repo from '@/db/repo';
 import type { Folder, Message, Note, Segment } from '@/db/repo';
-import { getKey } from '@/store/secrets';
+import { getKey, getSetting, setSetting } from '@/store/secrets';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 
 /**
@@ -89,6 +89,13 @@ export type StoreState = {
    * gives the user visible feedback — never a silent no-op.
    */
   sendChatMessage: (noteId: string, transcript: string, userText: string) => Promise<void>;
+  /**
+   * App-start hydration: reads the last-chosen background id (persisted via
+   * setSelectedBackgroundId below) from secure storage and applies it, so
+   * the chosen background survives an app restart instead of resetting to
+   * the default every launch. No-ops if nothing was ever persisted.
+   */
+  loadSelectedBackground: () => Promise<void>;
   moveNote: (noteId: string, folderId: string | null) => void;
   /**
    * Folder-screen "Move to…" action: moves a note into `folderId` (null =
@@ -289,6 +296,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setSelectedBackgroundId: (id: string) => {
     set({ selectedBackgroundId: id });
+    // Persist so the choice survives an app restart. Best-effort/fire-and-
+    // forget: the UI already reflects the new background synchronously
+    // above, and a failed write here just means next launch falls back to
+    // the default — never worth blocking or alerting over.
+    setSetting('selectedBackgroundId', id).catch(() => {});
+  },
+
+  loadSelectedBackground: async () => {
+    const id = await getSetting('selectedBackgroundId');
+    if (id) set({ selectedBackgroundId: id });
   },
 
   loadFolderCounts: () => {
