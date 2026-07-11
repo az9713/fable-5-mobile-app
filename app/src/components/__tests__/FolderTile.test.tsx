@@ -23,7 +23,7 @@ describe('FolderTile', () => {
 
   it('renders the dashed New folder tile without a count', async () => {
     const { getByText, queryByText } = await render(
-      <FolderTile label="New folder" icon="＋" dashed onPress={() => {}} />
+      <FolderTile label="New folder" icon="add" dashed onPress={() => {}} />
     );
     expect(getByText('New folder')).toBeTruthy();
     expect(queryByText('undefined')).toBeNull();

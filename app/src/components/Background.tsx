@@ -11,6 +11,10 @@ export type BackgroundProps = {
 
 const AURORA_COLORS = ['#2E1A47', '#3A6FB0', '#3FA9A0', '#F2B679'] as const;
 
+// Vertical scrim: near-transparent at top (keeps the art vivid) to a legible
+// dark base at the bottom (keeps text readable), instead of a flat wash.
+const SCRIM_COLORS = ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.24)'] as const;
+
 export function Background({ backgroundId, children }: BackgroundProps) {
   const entry =
     BACKGROUNDS.find((b) => b.id === backgroundId) ?? BACKGROUNDS[0];
@@ -22,7 +26,12 @@ export function Background({ backgroundId, children }: BackgroundProps) {
         resizeMode="cover"
         style={styles.fill}
       >
-        <View style={styles.scrim} />
+        <LinearGradient
+          colors={SCRIM_COLORS}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         {children}
       </ImageBackground>
     );
@@ -36,7 +45,12 @@ export function Background({ backgroundId, children }: BackgroundProps) {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.scrim} />
+      <LinearGradient
+        colors={SCRIM_COLORS}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       {children}
     </View>
   );
@@ -45,10 +59,6 @@ export function Background({ backgroundId, children }: BackgroundProps) {
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
-  },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
   },
 });
 

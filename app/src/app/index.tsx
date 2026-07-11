@@ -66,7 +66,7 @@ export default function HomeScreen() {
           <View style={styles.tileWrap}>
             <FolderTile
               label="Inbox"
-              icon="📥"
+              icon="file-tray-outline"
               count={inboxCount}
               onPress={() =>
                 router.push({ pathname: '/folder/[id]', params: { id: 'inbox' } })
@@ -87,7 +87,7 @@ export default function HomeScreen() {
           ))}
 
           <View style={styles.tileWrap}>
-            <FolderTile label="New folder" icon="＋" dashed onPress={openNewFolderModal} />
+            <FolderTile label="New folder" icon="add" dashed onPress={openNewFolderModal} />
           </View>
         </View>
       </SafeAreaView>
@@ -143,7 +143,8 @@ const styles = StyleSheet.create({
   recordSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.space.xxxl,
+    paddingTop: theme.space.xxxl,
+    paddingBottom: theme.space.xxxl + theme.space.xl,
   },
   grid: {
     flexDirection: 'row',

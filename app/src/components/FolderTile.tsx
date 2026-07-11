@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 import { GlassCard } from '@/components/GlassCard';
 import { theme } from '@/theme/theme';
@@ -9,7 +10,8 @@ export type FolderTileProps = {
   label: string;
   /** Note count badge. Omit for the dashed "New folder" tile. */
   count?: number;
-  icon?: string;
+  /** Ionicons glyph name — a clean monochrome icon, not an emoji. */
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
   /** Renders a dashed outline instead of the count badge — the "+ New folder" tile. */
   dashed?: boolean;
   onPress: () => void;
@@ -17,7 +19,13 @@ export type FolderTileProps = {
 
 const TILE_HEIGHT = 132;
 
-export function FolderTile({ label, count, icon = '📁', dashed = false, onPress }: FolderTileProps) {
+export function FolderTile({
+  label,
+  count,
+  icon = 'folder-outline',
+  dashed = false,
+  onPress,
+}: FolderTileProps) {
   const [pressed, setPressed] = useState(false);
 
   const handlePress = () => {
@@ -35,7 +43,7 @@ export function FolderTile({ label, count, icon = '📁', dashed = false, onPres
     >
       <GlassCard radius={theme.radius.lg} pressed={pressed} style={styles.card}>
         <View style={[styles.content, { height: TILE_HEIGHT }]}>
-          <Text style={styles.icon}>{icon}</Text>
+          <Ionicons name={icon} size={28} color={theme.color.textPrimary} />
           <Text style={styles.label} numberOfLines={1}>
             {label}
           </Text>
@@ -56,9 +64,6 @@ const styles = StyleSheet.create({
   content: {
     padding: theme.space.lg,
     justifyContent: 'space-between',
-  },
-  icon: {
-    fontSize: theme.font.title,
   },
   label: {
     fontSize: theme.font.body,

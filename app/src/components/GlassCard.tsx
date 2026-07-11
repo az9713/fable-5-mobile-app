@@ -12,6 +12,8 @@ export type GlassCardProps = {
   intensity?: number;
   pressed?: boolean;
   blur?: boolean;
+  /** Override the glass border color, e.g. theme.glass.borderStrong for extra definition. */
+  borderColor?: string;
 };
 
 export function GlassCard({
@@ -21,11 +23,12 @@ export function GlassCard({
   intensity = theme.glass.blurIntensity,
   pressed = false,
   blur = true,
+  borderColor = theme.glass.border,
 }: GlassCardProps) {
   const fillStyle: ViewStyle = {
     backgroundColor: pressed ? theme.glass.fillPressed : theme.glass.fill,
     borderWidth: 1,
-    borderColor: theme.glass.border,
+    borderColor,
     borderRadius: radius,
   };
 
@@ -33,6 +36,7 @@ export function GlassCard({
     <>
       <View style={[StyleSheet.absoluteFill, fillStyle]} />
       <Sheen />
+      <TopEdgeHighlight />
       {children}
     </>
   );
@@ -57,11 +61,19 @@ export function GlassCard({
 function Sheen() {
   return (
     <LinearGradient
-      colors={['rgba(255,255,255,0.25)', 'transparent']}
+      colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0.10)', 'transparent']}
+      locations={[0, 0.25, 0.6]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={styles.sheen}
       pointerEvents="none"
     />
   );
+}
+
+/** Crisp 1px bright rim along the top inner edge — reads as a glass edge catching light. */
+function TopEdgeHighlight() {
+  return <View pointerEvents="none" style={styles.topEdgeHighlight} />;
 }
 
 const styles = StyleSheet.create({
@@ -76,7 +88,15 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '33%',
+    height: '55%',
+  },
+  topEdgeHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
 });
 

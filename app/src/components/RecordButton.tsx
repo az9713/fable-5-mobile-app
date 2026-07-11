@@ -85,7 +85,24 @@ export function RecordButton({ size = DEFAULT_SIZE, onToggle }: RecordButtonProp
           accessibilityRole="button"
           accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
         >
-          <GlassCard radius={theme.radius.pill} style={{ width: size, height: size }}>
+          <GlassCard
+            radius={theme.radius.pill}
+            borderColor={theme.glass.borderStrong}
+            style={{ width: size, height: size }}
+          >
+            <View
+              pointerEvents="none"
+              style={[
+                styles.specular,
+                {
+                  width: size * 0.55,
+                  height: size * 0.32,
+                  borderRadius: (size * 0.32) / 2,
+                  top: size * 0.12,
+                  left: size * 0.14,
+                },
+              ]}
+            />
             <View style={[styles.center, { width: size, height: size }]}>
               <View style={[styles.dot, recording && styles.dotRecording]} />
             </View>
@@ -108,6 +125,10 @@ const styles = StyleSheet.create({
   center: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  specular: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   dot: {
     width: 28,
