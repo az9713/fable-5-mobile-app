@@ -1,15 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import { formatParagraphs, transcribe } from '@/ai/whisper';
 import { useRecorder } from '@/audio/useRecorder';
@@ -193,6 +188,7 @@ export default function NoteScreen() {
 
         <View style={styles.recordSection}>
           <RecordButton size={84} state={buttonState} onToggle={handleRecordToggle} />
+          <Text style={styles.recordCaption}>Add to note</Text>
         </View>
       </SafeAreaView>
 
@@ -217,27 +213,6 @@ function TranscriptCard({
 }) {
   const combinedText = segments.map((s) => s.text).join('\n\n');
 
-  const [collapsedHeight, setCollapsedHeight] = useState<number | null>(null);
-  const [expandedHeight, setExpandedHeight] = useState<number | null>(null);
-  const animatedHeight = useSharedValue(0);
-  const initialized = useRef(false);
-
-  useEffect(() => {
-    if (collapsedHeight === null || initialized.current) return;
-    initialized.current = true;
-    animatedHeight.value = expanded ? (expandedHeight ?? collapsedHeight) : collapsedHeight;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapsedHeight]);
-
-  useEffect(() => {
-    if (!initialized.current) return;
-    const target = expanded ? expandedHeight : collapsedHeight;
-    if (target === null) return;
-    animatedHeight.value = withTiming(target, { duration: 280 });
-  }, [expanded, expandedHeight, collapsedHeight, animatedHeight]);
-
-  const clipStyle = useAnimatedStyle(() => ({ height: animatedHeight.value }));
-
   const handleToggle = () => {
     Haptics.selectionAsync();
     onToggle();
@@ -248,7 +223,12 @@ function TranscriptCard({
       <View style={styles.cardContent}>
         <Text style={styles.sectionLabel}>Transcript</Text>
 
-        <Animated.View style={[styles.transcriptClip, clipStyle]}>
+        {/* Layout animation (not a measured-height tween): collapsed renders
+            numberOfLines={3}, expanded renders the full text at its natural
+            (auto) height. There's no invisible measurer to get wrong and no
+            clipped height cap — the ScrollView always sees the true content
+            height, so arbitrarily long transcripts stay fully reachable. */}
+        <Animated.View layout={LinearTransition.duration(280)}>
           {expanded ? (
             <View>
               {segments.map((seg) => (
@@ -264,29 +244,6 @@ function TranscriptCard({
             </Text>
           )}
         </Animated.View>
-
-        {/* Off-screen measurers: keep collapsed/expanded heights up to date
-            without affecting visible layout, so the toggle above can animate
-            height smoothly instead of popping instantly. */}
-        <View style={styles.measureHidden} pointerEvents="none">
-          <Text
-            style={styles.collapsedText}
-            numberOfLines={COLLAPSED_LINES}
-            onLayout={(e) => setCollapsedHeight(e.nativeEvent.layout.height)}
-          >
-            {combinedText}
-          </Text>
-        </View>
-        <View style={styles.measureHidden} pointerEvents="none">
-          <View onLayout={(e) => setExpandedHeight(e.nativeEvent.layout.height)}>
-            {segments.map((seg) => (
-              <View key={seg.id} style={styles.segment}>
-                <Text style={styles.segmentTimestamp}>{formatTimestamp(seg.created_at)}</Text>
-                <Text style={styles.segmentText}>{seg.text}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
         <Pressable
           onPress={handleToggle}
@@ -374,20 +331,10 @@ const styles = StyleSheet.create({
     fontSize: theme.font.body,
     color: theme.color.textPrimary,
   },
-  transcriptClip: {
-    overflow: 'hidden',
-  },
   collapsedText: {
     fontSize: theme.font.body,
     color: theme.color.textPrimary,
     lineHeight: 22,
-  },
-  measureHidden: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    opacity: 0,
   },
   segment: {
     gap: theme.space.xs,
@@ -430,5 +377,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: theme.space.sm,
     paddingBottom: theme.space.xl,
+  },
+  recordCaption: {
+    fontSize: theme.font.small,
+    color: theme.color.textSecondary,
+    marginTop: theme.space.xs,
   },
 });

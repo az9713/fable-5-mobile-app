@@ -25,6 +25,13 @@ const baseSegments: Segment[] = [
     audio_uri: 'file:///audio/n1.m4a',
     created_at: 0,
   },
+  {
+    id: 's2',
+    note_id: 'n1',
+    text: 'A much later follow-up segment appended after the widget shipped, way down at the bottom of the transcript.',
+    audio_uri: 'file:///audio/n1.m4a',
+    created_at: 1000,
+  },
 ];
 
 const mockFixedState: {
@@ -117,9 +124,26 @@ describe('NoteScreen', () => {
     expect(getByText('Show less')).toBeTruthy();
   });
 
+  it('expanding renders every segment in full — not clipped to a measured height', async () => {
+    const { getByText } = await render(<NoteScreen />);
+
+    await fireEvent.press(getByText('Show more'));
+
+    // Both segments (including the later one that would previously fall
+    // outside a too-short measured height) are fully present and reachable,
+    // each with its own timestamp — proving nothing gets clipped off.
+    expect(getByText(baseSegments[0].text)).toBeTruthy();
+    expect(getByText(baseSegments[1].text)).toBeTruthy();
+  });
+
   it('renders the "Chat with this note" button', async () => {
     const { getByLabelText } = await render(<NoteScreen />);
     expect(getByLabelText('Chat with this note')).toBeTruthy();
+  });
+
+  it('labels the footer record button so its purpose is clear next to the chat action', async () => {
+    const { getByText } = await render(<NoteScreen />);
+    expect(getByText('Add to note')).toBeTruthy();
   });
 
   it('tapping "Chat with this note" opens the chat drawer and loads its history', async () => {

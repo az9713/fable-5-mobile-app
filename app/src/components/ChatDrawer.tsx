@@ -3,6 +3,7 @@ import {
   Dimensions,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,7 +13,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -53,6 +54,18 @@ export type ChatDrawerProps = {
  * dismiss — release past ~30% of the drawer height or a fast downward flick
  * closes it; released short of that, it springs back open.
  *
+ * Rendered inside a native `Modal` rather than an always-mounted absolutely
+ * positioned overlay: a Modal's presence is OS-driven by its `visible` prop,
+ * so when it's not shown there is *nothing* left behind that could
+ * accidentally capture touches — unlike a manually pointerEvents-gated
+ * overlay, whose touch-blocking is only as reliable as the JS state driving
+ * it. `mounted` stays true for the duration of the close animation (so the
+ * slide-down still plays), then flips false once it's actually finished,
+ * fully tearing the Modal down. `GestureHandlerRootView` is required here
+ * because Modal content lives in a separate native view hierarchy that
+ * react-native-gesture-handler can't see into otherwise — without it the
+ * pan-to-dismiss gesture silently never fires.
+ *
  * Chat history (chatMessages) is a store selector — the parent screen is
  * responsible for calling loadChatMessages(noteId) when the drawer opens.
  */
@@ -62,6 +75,7 @@ export function ChatDrawer({ visible, onClose, noteId, transcript }: ChatDrawerP
 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [mounted, setMounted] = useState(visible);
   const listRef = useRef<FlatList<Message>>(null);
 
   const translateY = useSharedValue(DRAWER_HEIGHT);
@@ -70,11 +84,16 @@ export function ChatDrawer({ visible, onClose, noteId, transcript }: ChatDrawerP
 
   useEffect(() => {
     if (visible) {
+      setMounted(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       translateY.value = withSpring(0, SPRING_CONFIG);
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
-      translateY.value = withSpring(DRAWER_HEIGHT, SPRING_CONFIG);
+      translateY.value = withSpring(DRAWER_HEIGHT, SPRING_CONFIG, (finished) => {
+        // Only tear the Modal down once it's actually finished sliding
+        // away, so the close animation always gets to play out.
+        if (finished) runOnJS(setMounted)(false);
+      });
       backdropOpacity.value = withTiming(0, { duration: 200 });
     }
   }, [visible, translateY, backdropOpacity]);
@@ -129,95 +148,112 @@ export function ChatDrawer({ visible, onClose, noteId, transcript }: ChatDrawerP
 
   const canSend = input.trim().length > 0 && !sending;
 
+  // Not (or no longer) open: render nothing at all, so there is never an
+  // invisible full-screen layer left behind to swallow touches.
+  if (!mounted) return null;
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={closeDrawer}
-          accessibilityRole="button"
-          accessibilityLabel="Close chat"
-          testID="chat-drawer-backdrop"
-        />
-      </Animated.View>
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={closeDrawer}
+    >
+      {/* Modal content lives in its own native view hierarchy — gesture-handler
+          can't see into it without a root view of its own here, or the pan
+          (drag-to-dismiss) gesture would silently never fire. */}
+      <GestureHandlerRootView style={styles.flexFull}>
+        <View style={StyleSheet.absoluteFill}>
+          <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={closeDrawer}
+              accessibilityRole="button"
+              accessibilityLabel="Close chat"
+              testID="chat-drawer-backdrop"
+            />
+          </Animated.View>
 
-      <GestureDetector gesture={pan}>
-        <Animated.View style={[styles.sheetWrap, { height: DRAWER_HEIGHT }, sheetStyle]}>
-          <GlassCard radius={theme.radius.xl} style={styles.sheet}>
-            <KeyboardAvoidingView
-              style={styles.flexFull}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
-              <View style={styles.dragHandle} />
-
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Chat with this note</Text>
-                <Pressable
-                  onPress={closeDrawer}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
+          <GestureDetector gesture={pan}>
+            <Animated.View style={[styles.sheetWrap, { height: DRAWER_HEIGHT }, sheetStyle]}>
+              <GlassCard radius={theme.radius.xl} style={styles.sheet}>
+                <KeyboardAvoidingView
+                  style={styles.flexFull}
+                  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 >
-                  <Ionicons name="close" size={22} color={theme.color.textPrimary} />
-                </Pressable>
-              </View>
+                  <View style={styles.dragHandle} />
 
-              <FlatList
-                ref={listRef}
-                data={chatMessages}
-                keyExtractor={(m) => m.id}
-                renderItem={({ item }) => <Bubble message={item} />}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>Ask anything about this note.</Text>
-                }
-              />
+                  <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Chat with this note</Text>
+                    <Pressable
+                      onPress={closeDrawer}
+                      hitSlop={12}
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
+                    >
+                      <Ionicons name="close" size={22} color={theme.color.textPrimary} />
+                    </Pressable>
+                  </View>
 
-              <View style={styles.promptRow}>
-                {SUGGESTED_PROMPTS.map((prompt) => (
-                  <Pressable
-                    key={prompt}
-                    onPress={() => setInput(prompt)}
-                    style={styles.promptChip}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.promptChipText} numberOfLines={1}>
-                      {prompt}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <View style={styles.inputRow}>
-                <TextInput
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Ask about this note…"
-                  placeholderTextColor={theme.color.textFaint}
-                  style={styles.input}
-                  multiline
-                  testID="chat-drawer-input"
-                />
-                <Pressable
-                  onPress={() => handleSend(input)}
-                  disabled={!canSend}
-                  style={styles.sendButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Send message"
-                  testID="chat-drawer-send"
-                >
-                  <Ionicons
-                    name="arrow-up-circle"
-                    size={32}
-                    color={canSend ? theme.color.textPrimary : theme.color.textFaint}
+                  <FlatList
+                    ref={listRef}
+                    data={chatMessages}
+                    keyExtractor={(m) => m.id}
+                    renderItem={({ item }) => <Bubble message={item} />}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={
+                      <Text style={styles.emptyText}>Ask anything about this note.</Text>
+                    }
                   />
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </GlassCard>
-        </Animated.View>
-      </GestureDetector>
-    </View>
+
+                  <View style={styles.promptRow}>
+                    {SUGGESTED_PROMPTS.map((prompt) => (
+                      <Pressable
+                        key={prompt}
+                        onPress={() => setInput(prompt)}
+                        style={styles.promptChip}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.promptChipText} numberOfLines={1}>
+                          {prompt}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      value={input}
+                      onChangeText={setInput}
+                      placeholder="Ask about this note…"
+                      placeholderTextColor={theme.color.textFaint}
+                      style={styles.input}
+                      multiline
+                      testID="chat-drawer-input"
+                    />
+                    <Pressable
+                      onPress={() => handleSend(input)}
+                      disabled={!canSend}
+                      style={styles.sendButton}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send message"
+                      testID="chat-drawer-send"
+                    >
+                      <Ionicons
+                        name="arrow-up-circle"
+                        size={32}
+                        color={canSend ? theme.color.textPrimary : theme.color.textFaint}
+                      />
+                    </Pressable>
+                  </View>
+                </KeyboardAvoidingView>
+              </GlassCard>
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      </GestureHandlerRootView>
+    </Modal>
   );
 }
 

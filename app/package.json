@@ -62,6 +62,9 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "setupFiles": [
+      "react-native-gesture-handler/jestSetup"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/src/db/__tests__/testAdapter\\.ts$"
