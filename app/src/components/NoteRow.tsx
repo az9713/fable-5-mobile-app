@@ -18,6 +18,10 @@ function formatDate(ms: number): string {
 
 /** A slim, non-blurred row for a note inside a folder/Inbox list. */
 export function NoteRow({ note, snippet, onPress }: NoteRowProps) {
+  // Prefer the AI-generated summary once it's ready; fall back to the raw
+  // transcript snippet while analysis is still pending (or failed).
+  const preview = note.summary || snippet;
+
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={note.title}>
       <GlassCard blur={false} radius={theme.radius.md} style={styles.card}>
@@ -28,9 +32,9 @@ export function NoteRow({ note, snippet, onPress }: NoteRowProps) {
             </Text>
             <Text style={styles.date}>{formatDate(note.created_at)}</Text>
           </View>
-          {!!snippet && (
+          {!!preview && (
             <Text style={styles.snippet} numberOfLines={2}>
-              {snippet}
+              {preview}
             </Text>
           )}
         </View>

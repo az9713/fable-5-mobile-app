@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const loadFolderCounts = useStore((s) => s.loadFolderCounts);
   const createFolder = useStore((s) => s.createFolder);
   const captureNote = useStore((s) => s.captureNote);
+  const analyzeNote = useStore((s) => s.analyzeNote);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -91,8 +92,13 @@ export default function HomeScreen() {
 
       try {
         const raw = await transcribe(audioUri, key);
-        captureNote(formatParagraphs(raw), audioUri);
+        const transcript = formatParagraphs(raw);
+        const note = captureNote(transcript, audioUri);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Fire-and-forget: the note is already visible in Inbox with its
+        // placeholder title. AI title/summary/next-steps fill in a moment
+        // later without blocking the recording UI from returning to idle.
+        analyzeNote(note.id, transcript).catch(() => {});
       } catch {
         // Never lose the recording: save it with a placeholder transcript so
         // the user can retry later, and let them know something went wrong.

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
+import { analyze } from '@/ai/anthropic';
 import { getDb } from '@/db/db';
 import * as repo from '@/db/repo';
 import type { Folder, Note } from '@/db/repo';
+import { getKey } from '@/store/secrets';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 
 /**
@@ -33,6 +35,16 @@ export type StoreState = {
    * Inbox note list (if currently selected) and folder counts.
    */
   captureNote: (transcript: string, audioUri: string | null) => Note;
+  /**
+   * Phase 5: fire-and-forget AI pass on a just-captured note. Looks up the
+   * Anthropic key; if missing, skips silently (no alert — analysis is a
+   * nice-to-have, never blocking). On success, overwrites the placeholder
+   * title with the AI title and stores summary/next_steps, then refreshes
+   * whatever note list is currently loaded so the UI picks up the change.
+   * On any failure (network, bad key, etc.), leaves the placeholder title in
+   * place and does not alert — the transcript is already safely saved.
+   */
+  analyzeNote: (noteId: string, transcript: string) => Promise<void>;
   moveNote: (noteId: string, folderId: string | null) => void;
   deleteNote: (noteId: string) => void;
   setSelectedBackgroundId: (id: string) => void;
@@ -101,6 +113,26 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     get().loadFolderCounts();
     return note;
+  },
+
+  analyzeNote: async (noteId: string, transcript: string) => {
+    const key = await getKey('anthropic');
+    if (!key) return;
+
+    try {
+      const db = getDb();
+      const result = await analyze(transcript, key);
+      repo.updateNote(db, noteId, {
+        title: result.title,
+        summary: result.summary,
+        nextSteps: result.next_steps,
+      });
+      get().loadNotes();
+      get().loadFolderCounts();
+    } catch {
+      // Non-blocking, non-critical: leave the placeholder title/no-summary
+      // in place. The transcript is already safely saved via captureNote.
+    }
   },
 
   moveNote: (noteId: string, folderId: string | null) => {
