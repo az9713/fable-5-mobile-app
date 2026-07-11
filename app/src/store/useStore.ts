@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { analyze } from '@/ai/anthropic';
 import { getDb } from '@/db/db';
 import * as repo from '@/db/repo';
-import type { Folder, Note } from '@/db/repo';
+import type { Folder, Note, Segment } from '@/db/repo';
 import { getKey } from '@/store/secrets';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 
@@ -22,6 +22,10 @@ export type StoreState = {
   folderCounts: Record<string, number>;
   /** Note count for the virtual Inbox (folder_id IS NULL). */
   inboxCount: number;
+  /** The note currently open on the note-detail screen, loaded by loadNote. */
+  currentNote: Note | null;
+  /** currentNote's segments (original capture + any appends), oldest first. */
+  currentSegments: Segment[];
 
   loadFolders: () => void;
   createFolder: (name: string) => Folder;
@@ -45,6 +49,32 @@ export type StoreState = {
    * place and does not alert — the transcript is already safely saved.
    */
   analyzeNote: (noteId: string, transcript: string) => Promise<void>;
+  /**
+   * Note-detail screen: loads a single note plus its segments (original
+   * capture + any "add to note" appends, oldest first) into currentNote /
+   * currentSegments.
+   */
+  loadNote: (noteId: string) => void;
+  /**
+   * Note-detail screen's "add to this note" record button: saves a new
+   * segment for an already-transcribed recording and refreshes
+   * currentNote/currentSegments. Kept synchronous and side-effect-free
+   * beyond the db write so it's instant/reliable — re-running AI analysis
+   * on the combined transcript is a separate, best-effort step
+   * (reanalyzeNote) callers fire off afterwards without awaiting.
+   */
+  appendToNote: (
+    noteId: string,
+    transcript: string,
+    audioUri: string | null
+  ) => Segment;
+  /**
+   * Best-effort re-analysis after an append: joins every segment's text into
+   * one transcript and re-runs analyze() over it, same fail-silent pattern
+   * as analyzeNote — a missing key or a thrown request never breaks the
+   * append, the segment is already saved by the time this runs.
+   */
+  reanalyzeNote: (noteId: string) => Promise<void>;
   moveNote: (noteId: string, folderId: string | null) => void;
   /**
    * Folder-screen "Move to…" action: moves a note into `folderId` (null =
@@ -69,6 +99,8 @@ export const useStore = create<StoreState>((set, get) => ({
   selectedBackgroundId: defaultBackgroundId,
   folderCounts: {},
   inboxCount: 0,
+  currentNote: null,
+  currentSegments: [],
 
   loadFolders: () => {
     const db = getDb();
@@ -139,6 +171,42 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch {
       // Non-blocking, non-critical: leave the placeholder title/no-summary
       // in place. The transcript is already safely saved via captureNote.
+    }
+  },
+
+  loadNote: (noteId: string) => {
+    const db = getDb();
+    const note = repo.getNote(db, noteId) ?? null;
+    const currentSegments = repo.listSegments(db, noteId);
+    set({ currentNote: note, currentSegments });
+  },
+
+  appendToNote: (noteId: string, transcript: string, audioUri: string | null) => {
+    const db = getDb();
+    const segment = repo.addSegment(db, noteId, { text: transcript, audioUri });
+    get().loadNote(noteId);
+    return segment;
+  },
+
+  reanalyzeNote: async (noteId: string) => {
+    const key = await getKey('anthropic');
+    if (!key) return;
+
+    try {
+      const db = getDb();
+      const segments = repo.listSegments(db, noteId);
+      const combined = segments.map((s) => s.text).join('\n\n');
+      const result = await analyze(combined, key);
+      repo.updateNote(db, noteId, {
+        title: result.title,
+        summary: result.summary,
+        nextSteps: result.next_steps,
+      });
+      get().loadNote(noteId);
+      get().loadNotes();
+    } catch {
+      // Non-blocking, non-critical: leave the previous title/summary in
+      // place. The segment is already safely saved via appendToNote.
     }
   },
 
