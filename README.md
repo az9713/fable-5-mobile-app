@@ -6,6 +6,10 @@ A single-user glassmorphism voice-notes app: tap record, talk, and it transcribe
 
 Record → **Whisper** transcription → **Claude Haiku** auto-title + summary + next-steps → filed in Inbox → move into glass folders → expand/append/chat with any note.
 
+<p align="center">
+  <img src="docs/media/home.png" alt="Ideas home screen — liquid-glass folders and a record button over a Seurat painting" width="300">
+</p>
+
 ## Stack
 - **Expo SDK 54** / React Native 0.81 / expo-router (⚠️ **pinned to SDK 54** — the phone's Expo Go supports no higher; do not upgrade the SDK)
 - Local **SQLite** (expo-sqlite) — the only copy of your notes lives on the device

@@ -11,3 +11,4 @@ node_modules/
 *.PNG
 *.png
 !app/assets/**/*.png
+!docs/media/*.png
