@@ -1,7 +1,7 @@
 import { useStore } from '@/store/useStore';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 import * as repo from '@/db/repo';
-import { analyze } from '@/ai/anthropic';
+import { analyze, chat } from '@/ai/anthropic';
 import { getKey } from '@/store/secrets';
 
 // getDb() opens a native expo-sqlite database and can't run under Jest, so
@@ -20,10 +20,13 @@ jest.mock('@/db/repo', () => ({
   getNote: jest.fn(),
   addSegment: jest.fn(),
   updateNote: jest.fn(),
+  addMessage: jest.fn(),
+  listMessages: jest.fn(() => []),
 }));
 
 jest.mock('@/ai/anthropic', () => ({
   analyze: jest.fn(),
+  chat: jest.fn(),
 }));
 
 jest.mock('@/store/secrets', () => ({
@@ -158,6 +161,86 @@ describe('useStore', () => {
 
       await expect(useStore.getState().reanalyzeNote('note-1')).resolves.toBeUndefined();
       expect(repo.updateNote).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadChatMessages', () => {
+    it('loads persisted chat history into chatMessages', () => {
+      const messages = [
+        { id: 'm1', note_id: 'note-1', role: 'user', content: 'Hi', created_at: 0 },
+      ];
+      (repo.listMessages as jest.Mock).mockReturnValue(messages);
+
+      useStore.getState().loadChatMessages('note-1');
+
+      expect(repo.listMessages).toHaveBeenCalledWith(expect.anything(), 'note-1');
+      expect(useStore.getState().chatMessages).toEqual(messages);
+    });
+  });
+
+  describe('sendChatMessage', () => {
+    beforeEach(() => {
+      (repo.addMessage as jest.Mock).mockClear();
+      (repo.listMessages as jest.Mock).mockReset().mockReturnValue([]);
+      (chat as jest.Mock).mockReset();
+      (getKey as jest.Mock).mockReset();
+    });
+
+    it('always saves the user message first, before checking for a key', async () => {
+      (getKey as jest.Mock).mockResolvedValue(null);
+
+      await useStore.getState().sendChatMessage('note-1', 'transcript', 'What next?');
+
+      expect(repo.addMessage).toHaveBeenNthCalledWith(1, expect.anything(), 'note-1', {
+        role: 'user',
+        content: 'What next?',
+      });
+    });
+
+    it('adds a visible "add your key" assistant message when no Anthropic key is configured', async () => {
+      (getKey as jest.Mock).mockResolvedValue(null);
+
+      await useStore.getState().sendChatMessage('note-1', 'transcript', 'What next?');
+
+      expect(chat).not.toHaveBeenCalled();
+      expect(repo.addMessage).toHaveBeenNthCalledWith(2, expect.anything(), 'note-1', {
+        role: 'assistant',
+        content: 'Add your Anthropic key in Settings to chat.',
+      });
+    });
+
+    it('calls chat() with history + transcript and saves the reply on success', async () => {
+      (getKey as jest.Mock).mockResolvedValue('sk-ant-test');
+      (repo.listMessages as jest.Mock).mockReturnValue([
+        { id: 'm1', note_id: 'note-1', role: 'user', content: 'What next?', created_at: 0 },
+      ]);
+      (chat as jest.Mock).mockResolvedValue('Ship it next.');
+
+      await useStore.getState().sendChatMessage('note-1', 'the transcript', 'What next?');
+
+      expect(chat).toHaveBeenCalledWith(
+        [{ role: 'user', content: 'What next?' }],
+        'the transcript',
+        'sk-ant-test'
+      );
+      expect(repo.addMessage).toHaveBeenLastCalledWith(expect.anything(), 'note-1', {
+        role: 'assistant',
+        content: 'Ship it next.',
+      });
+    });
+
+    it('saves a friendly error message and never throws when chat() rejects', async () => {
+      (getKey as jest.Mock).mockResolvedValue('sk-ant-test');
+      (chat as jest.Mock).mockRejectedValue(new Error('network down'));
+
+      await expect(
+        useStore.getState().sendChatMessage('note-1', 'transcript', 'What next?')
+      ).resolves.toBeUndefined();
+
+      expect(repo.addMessage).toHaveBeenLastCalledWith(expect.anything(), 'note-1', {
+        role: 'assistant',
+        content: "Sorry, I couldn't respond — check your connection and try again.",
+      });
     });
   });
 });

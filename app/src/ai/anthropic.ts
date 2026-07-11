@@ -74,6 +74,46 @@ export function parseAnalysis(raw: string): Analysis {
   }
 }
 
+export type ChatRole = 'user' | 'assistant';
+export type ChatMessage = { role: ChatRole; content: string };
+
+/**
+ * Sends a chat turn (full history including the latest user message) to
+ * Claude Haiku, grounded in the note's full transcript via the system
+ * prompt, and returns the assistant's reply text (trimmed). Throws a clear
+ * Error on a non-2xx HTTP response — callers decide the fallback UX (see
+ * useStore.sendChatMessage, which always saves an assistant reply, even an
+ * error one, on catch).
+ */
+export async function chat(
+  history: ChatMessage[],
+  transcript: string,
+  apiKey: string
+): Promise<string> {
+  const res = await fetch(URL, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1000,
+      system: `You are discussing the user's voice note. Full transcript:\n\n${transcript}\n\nAnswer questions about it helpfully and concisely.`,
+      messages: history.map((m) => ({ role: m.role, content: m.content })),
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Anthropic ${res.status}: ${await res.text()}`);
+  }
+
+  const data = await res.json();
+  const text = data?.content?.[0]?.text ?? '';
+  return text.trim();
+}
+
 function stripFences(raw: string): string {
   const trimmed = raw.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);

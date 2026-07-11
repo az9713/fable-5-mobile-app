@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
-import type { Note, Segment } from '@/db/repo';
+import type { Message, Note, Segment } from '@/db/repo';
 
 // Rendering the real store would call getDb() (expo-sqlite, native-only —
 // crashes under Jest), so give the note screen a fixed, in-memory state,
@@ -31,16 +31,22 @@ const mockFixedState: {
   selectedBackgroundId: string;
   currentNote: Note | null;
   currentSegments: Segment[];
+  chatMessages: Message[];
   loadNote: jest.Mock;
   appendToNote: jest.Mock;
   reanalyzeNote: jest.Mock;
+  loadChatMessages: jest.Mock;
+  sendChatMessage: jest.Mock;
 } = {
   selectedBackgroundId: 'aurora',
   currentNote: baseNote,
   currentSegments: baseSegments,
+  chatMessages: [],
   loadNote: jest.fn(),
   appendToNote: jest.fn(),
   reanalyzeNote: jest.fn().mockResolvedValue(undefined),
+  loadChatMessages: jest.fn(),
+  sendChatMessage: jest.fn().mockResolvedValue(undefined),
 };
 
 jest.mock('@/store/useStore', () => ({
@@ -73,9 +79,12 @@ describe('NoteScreen', () => {
   beforeEach(() => {
     mockFixedState.currentNote = baseNote;
     mockFixedState.currentSegments = baseSegments;
+    mockFixedState.chatMessages = [];
     mockFixedState.loadNote.mockClear();
     mockFixedState.appendToNote.mockClear();
     mockFixedState.reanalyzeNote.mockClear();
+    mockFixedState.loadChatMessages.mockClear();
+    mockFixedState.sendChatMessage.mockClear();
   });
 
   it('renders the analysis card (summary + next steps) and the collapsed transcript', async () => {
@@ -108,8 +117,18 @@ describe('NoteScreen', () => {
     expect(getByText('Show less')).toBeTruthy();
   });
 
-  it('renders the "Chat with this note" placeholder button', async () => {
-    const { getByText } = await render(<NoteScreen />);
-    expect(getByText('Chat with this note')).toBeTruthy();
+  it('renders the "Chat with this note" button', async () => {
+    const { getByLabelText } = await render(<NoteScreen />);
+    expect(getByLabelText('Chat with this note')).toBeTruthy();
+  });
+
+  it('tapping "Chat with this note" opens the chat drawer and loads its history', async () => {
+    const { getByText, getByLabelText } = await render(<NoteScreen />);
+
+    await fireEvent.press(getByLabelText('Chat with this note'));
+
+    expect(mockFixedState.loadChatMessages).toHaveBeenCalledWith('n1');
+    // The drawer's own header text confirms it's rendered/open.
+    expect(getByText('Ask anything about this note.')).toBeTruthy();
   });
 });

@@ -14,6 +14,7 @@ import Animated, {
 import { formatParagraphs, transcribe } from '@/ai/whisper';
 import { useRecorder } from '@/audio/useRecorder';
 import { Background } from '@/components/Background';
+import { ChatDrawer } from '@/components/ChatDrawer';
 import { GlassCard } from '@/components/GlassCard';
 import { RecordButton } from '@/components/RecordButton';
 import type { Segment } from '@/db/repo';
@@ -51,9 +52,11 @@ export default function NoteScreen() {
   const loadNote = useStore((s) => s.loadNote);
   const appendToNote = useStore((s) => s.appendToNote);
   const reanalyzeNote = useStore((s) => s.reanalyzeNote);
+  const loadChatMessages = useStore((s) => s.loadChatMessages);
 
   const [expanded, setExpanded] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [chatVisible, setChatVisible] = useState(false);
   const buttonState = recorder.state === 'recording' ? 'recording' : processing ? 'processing' : 'idle';
 
   useFocusEffect(
@@ -62,6 +65,11 @@ export default function NoteScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id])
   );
+
+  useEffect(() => {
+    if (chatVisible && id) loadChatMessages(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatVisible, id]);
 
   const handleRecordToggle = async (recording: boolean) => {
     if (recording) {
@@ -123,6 +131,7 @@ export default function NoteScreen() {
   }
 
   const hasNextSteps = currentNote.next_steps.length > 0;
+  const combinedTranscript = currentSegments.map((s) => s.text).join('\n\n');
 
   return (
     <Background backgroundId={selectedBackgroundId}>
@@ -163,8 +172,7 @@ export default function NoteScreen() {
         />
 
         <Pressable
-          // Phase 8: chat drawer — no-op placeholder for now.
-          onPress={() => {}}
+          onPress={() => setChatVisible(true)}
           style={styles.chatButtonWrap}
           accessibilityRole="button"
           accessibilityLabel="Chat with this note"
@@ -181,6 +189,13 @@ export default function NoteScreen() {
           <RecordButton size={84} state={buttonState} onToggle={handleRecordToggle} />
         </View>
       </SafeAreaView>
+
+      <ChatDrawer
+        visible={chatVisible}
+        onClose={() => setChatVisible(false)}
+        noteId={currentNote.id}
+        transcript={combinedTranscript}
+      />
     </Background>
   );
 }

@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { analyze } from '@/ai/anthropic';
+import { analyze, chat } from '@/ai/anthropic';
 import { getDb } from '@/db/db';
 import * as repo from '@/db/repo';
-import type { Folder, Note, Segment } from '@/db/repo';
+import type { Folder, Message, Note, Segment } from '@/db/repo';
 import { getKey } from '@/store/secrets';
 import { BACKGROUNDS } from '@/theme/backgrounds';
 
@@ -26,6 +26,8 @@ export type StoreState = {
   currentNote: Note | null;
   /** currentNote's segments (original capture + any appends), oldest first. */
   currentSegments: Segment[];
+  /** Chat-with-note drawer: persisted chat history for the currently-open note, oldest first. */
+  chatMessages: Message[];
 
   loadFolders: () => void;
   createFolder: (name: string) => Folder;
@@ -75,6 +77,18 @@ export type StoreState = {
    * append, the segment is already saved by the time this runs.
    */
   reanalyzeNote: (noteId: string) => Promise<void>;
+  /** Chat drawer: loads persisted chat history for a note into chatMessages. */
+  loadChatMessages: (noteId: string) => void;
+  /**
+   * Chat drawer's send action. Always resolves to SOME state — the user's
+   * message is saved immediately (so it appears instantly), and an
+   * assistant reply always follows: the model's answer on success, a
+   * "add your key" nudge if no Anthropic key is configured, or a
+   * connection-error message if the request throws. Chat is an explicit
+   * user action (unlike the passive auto-analysis above), so every path
+   * gives the user visible feedback — never a silent no-op.
+   */
+  sendChatMessage: (noteId: string, transcript: string, userText: string) => Promise<void>;
   moveNote: (noteId: string, folderId: string | null) => void;
   /**
    * Folder-screen "Move to…" action: moves a note into `folderId` (null =
@@ -101,6 +115,7 @@ export const useStore = create<StoreState>((set, get) => ({
   inboxCount: 0,
   currentNote: null,
   currentSegments: [],
+  chatMessages: [],
 
   loadFolders: () => {
     const db = getDb();
@@ -207,6 +222,49 @@ export const useStore = create<StoreState>((set, get) => ({
     } catch {
       // Non-blocking, non-critical: leave the previous title/summary in
       // place. The segment is already safely saved via appendToNote.
+    }
+  },
+
+  loadChatMessages: (noteId: string) => {
+    const db = getDb();
+    set({ chatMessages: repo.listMessages(db, noteId) });
+  },
+
+  sendChatMessage: async (noteId: string, transcript: string, userText: string) => {
+    const db = getDb();
+
+    // 1. Save the user's message immediately and refresh — it appears
+    // instantly regardless of what happens next.
+    repo.addMessage(db, noteId, { role: 'user', content: userText });
+    get().loadChatMessages(noteId);
+
+    // 2. No key configured: chat is an explicit user action, so give
+    // feedback instead of silently doing nothing.
+    const key = await getKey('anthropic');
+    if (!key) {
+      repo.addMessage(db, noteId, {
+        role: 'assistant',
+        content: 'Add your Anthropic key in Settings to chat.',
+      });
+      get().loadChatMessages(noteId);
+      return;
+    }
+
+    // 3. Call the model over the full history (existing + the message just
+    // saved above), grounded in the note's transcript.
+    try {
+      const history = repo
+        .listMessages(db, noteId)
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      const reply = await chat(history, transcript, key);
+      repo.addMessage(db, noteId, { role: 'assistant', content: reply });
+    } catch {
+      repo.addMessage(db, noteId, {
+        role: 'assistant',
+        content: "Sorry, I couldn't respond — check your connection and try again.",
+      });
+    } finally {
+      get().loadChatMessages(noteId);
     }
   },
 
